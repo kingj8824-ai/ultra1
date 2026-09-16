@@ -89,13 +89,14 @@
 
         // Directly initializes Unity using clean, non-blocked file pathways
         createUnityInstance(document.querySelector("#unity-canvas"), {
-            dataUrl: "https://github.com/kingj8824-ai/ultra1/releases/download/v1.0.0/2facc552a7176a3c4f6184e293ead869.data.unityweb",
+            dataUrl: "build/2facc552a7176a3c4f6184e293ead869.data.unityweb",
             frameworkUrl: "build/372c51523da4553ad9ad6740d46ef615.framework.js.unityweb",
             codeUrl: "build/4316a55f7504875581587d5c75896d34.wasm.unityweb",
             streamingAssetsUrl: "StreamingAssets",
             companyName: "Hakita",
             productName: "ULTRAKILL",
             productVersion: "1.0",
+            decompress: false
         }, (progress) => {
             // Standard tracking loop updates percentage directly during network fetch
             let compilationProgress = Math.round(progress * 100);
