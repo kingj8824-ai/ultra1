@@ -21,10 +21,11 @@
             left: 50%;
             top: 50%;
             transform: translate(-50%, -50%);
-            width: 320px;
+            width: 340px;
             text-align: center;
             font-family: monospace;
             color: #ff0000;
+            z-index: 10;
         }
 
         #custom-progress-bar-empty {
@@ -42,6 +43,21 @@
             background: #ff0000;
             transition: width 0.1s ease;
         }
+
+        /* Styling block for the error popup console override */
+        #onscreen-error-log {
+            color: #ff3333;
+            background: #111;
+            border: 1px dashed #ff0000;
+            padding: 10px;
+            font-size: 11px;
+            margin-top: 15px;
+            text-align: left;
+            white-space: pre-wrap;
+            max-height: 150px;
+            overflow-y: auto;
+            display: none;
+        }
     </style>
 </head>
 
@@ -52,12 +68,30 @@
             <div id="custom-progress-bar-full"></div>
         </div>
         <div id="progress-percentage" style="font-size: 14px; margin-top: 5px;">0%</div>
+        <!-- Built-in screen diagnostic console container -->
+        <div id="onscreen-error-log"></div>
     </div>
 
-    <canvas id="unity-canvas" tabindex="-1" hidden></canvas>
+    <canvas id="unity-canvas" tabindex="-1" style="width: 100vw; height: 100vh; position: fixed; top: 0; left: 0;" hidden></canvas>
     
-    <!-- Explicitly pointing to lowercase folder pathways -->
-    <script src="build/9853637125e801e9aae48e78dbbdcfca.loader.js"></script>
+    <script>
+        // DIAGNOSTIC OVERRIDE: Automatically intercept and print errors straight onto the page screen
+        var logBox = document.getElementById("onscreen-error-log");
+        function showDiagnosticError(message) {
+            logBox.style.display = "block";
+            logBox.innerText += "\n» " + message;
+        }
+        window.onerror = function(msg, url, line) {
+            showDiagnosticError(msg + " (Line " + line + ")");
+            return false;
+        };
+        window.onunhandledrejection = function(event) {
+            showDiagnosticError("Promise Rejected: " + event.reason);
+        };
+    </script>
+
+    <!-- Pointing directly to Capital 'Build/' directory -->
+    <script src="Build/9853637125e801e9aae48e78dbbdcfca.loader.js" onerror="showDiagnosticError('Could not load 9853637125e801e9aae48e78dbbdcfca.loader.js. Verify folder capitalizations.')"></script>
     <script>
         var canvas = document.querySelector("#unity-canvas");
         var progressFull = document.querySelector("#custom-progress-bar-full");
@@ -69,46 +103,35 @@
             meta.name = 'viewport';
             meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
             document.getElementsByTagName('head')[0].appendChild(meta);
-            canvas.style.width = "100%";
-            canvas.style.height = "100%";
-            canvas.style.position = "fixed";
-            document.body.style.textAlign = "left";
-        } else {
-            function resizeCanvas() {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-                canvas.style.width = window.innerWidth + "px";
-                canvas.style.height = window.innerHeight + "px";
-            }
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
         }
 
-        // Make the canvas visible immediately for standard engine streaming
-        document.querySelector("#unity-canvas").hidden = false;
+        canvas.hidden = false;
 
-        // Directly initializes Unity using clean, non-blocked file pathways
-        createUnityInstance(document.querySelector("#unity-canvas"), {
-            dataUrl: "build/2facc552a7176a3c4f6184e293ead869.data.unityweb",
-            frameworkUrl: "build/372c51523da4553ad9ad6740d46ef615.framework.js.unityweb",
-            codeUrl: "build/4316a55f7504875581587d5c75896d34.wasm.unityweb",
-            streamingAssetsUrl: "StreamingAssets",
-            companyName: "Hakita",
-            productName: "ULTRAKILL",
-            productVersion: "1.0",
-            decompress: false
-        }, (progress) => {
-            // Standard tracking loop updates percentage directly during network fetch
-            let compilationProgress = Math.round(progress * 100);
-            progressFull.style.width = compilationProgress + "%";
-            progressText.innerText = compilationProgress + "%";
-        }).then((e) => {
-            document.querySelector("#custom-progress-container").remove();
-        }).catch((err) => {
-            console.error(err);
-            statusLabel.innerText = "ENGINE COMPILATION ERROR!";
-            progressText.innerText = "Check your browser's F12 console.";
-        });
+        // Verify that createUnityInstance exists before running initialization parameters
+        if (typeof createUnityInstance === "undefined") {
+            showDiagnosticError("Initialization Error: 'createUnityInstance' is missing. The engine loader script did not execute.");
+        } else {
+            createUnityInstance(canvas, {
+                dataUrl: "Build/2facc552a7176a3c4f6184e293ead869.data.unityweb",
+                frameworkUrl: "Build/372c51523da4553ad9ad6740d46ef615.framework.js.unityweb",
+                codeUrl: "Build/4316a55f7504875581587d5c75896d34.wasm.unityweb",
+                streamingAssetsUrl: "StreamingAssets",
+                companyName: "Hakita",
+                productName: "ULTRAKILL",
+                productVersion: "1.0",
+                decompress: false
+            }, (progress) => {
+                let compilationProgress = Math.round(progress * 100);
+                progressFull.style.width = compilationProgress + "%";
+                progressText.innerText = compilationProgress + "%";
+            }).then((e) => {
+                document.querySelector("#custom-progress-container").remove();
+            }).catch((err) => {
+                console.error(err);
+                statusLabel.innerText = "ENGINE COMPILATION ERROR!";
+                showDiagnosticError(err.message || err);
+            });
+        }
     </script>
 </body>
 
