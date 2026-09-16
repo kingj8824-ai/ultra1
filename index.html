@@ -14,6 +14,7 @@
             overflow: hidden;
             height: 100%;
             width: 100%;
+            background-color: #000;
         }
 
         #unity-container {
@@ -23,17 +24,56 @@
             top: 0;
             left: 0;
         }
+
+        /* Progress Bar UI Element Styling */
+        #custom-progress-container {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 320px;
+            text-align: center;
+            font-family: monospace;
+            color: #ff0000;
+        }
+
+        #custom-progress-bar-empty {
+            width: 100%;
+            height: 12px;
+            background: #222;
+            border: 2px solid #ff0000;
+            margin-top: 10px;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+        }
+
+        #custom-progress-bar-full {
+            width: 0%;
+            height: 100%;
+            background: #ff0000;
+            transition: width 0.1s ease;
+        }
     </style>
 </head>
 
-<body style="text-align: center; padding: 0; border: 0; margin: 0;">
-    <div id='loading-text' style="color: black; font-family: cursive; font-size: 48px; text-align: center; margin-top: 20px;">LOADING...</div>
+<body>
+    <!-- Visual indicators replacing the flat text loader -->
+    <div id="custom-progress-container">
+        <div id="loading-text" style="font-size: 24px; font-weight: bold; letter-spacing: 2px;">LOADING ULTRAKILL...</div>
+        <div id="custom-progress-bar-empty">
+            <div id="custom-progress-bar-full"></div>
+        </div>
+        <div id="progress-percentage" style="font-size: 14px; margin-top: 5px;">0%</div>
+    </div>
+
     <canvas id="unity-canvas" tabindex="-1" hidden></canvas>
     <script src="Build/9853637125e801e9aae48e78dbbdcfca.loader.js"></script>
     <script>
         var canvas = document.querySelector("#unity-canvas");
+        var progressFull = document.querySelector("#custom-progress-bar-full");
+        var progressText = document.querySelector("#progress-percentage");
+        var statusLabel = document.querySelector("#loading-text");
+
         if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-            // Mobile device style: fill the whole browser client area with the game canvas:
             var meta = document.createElement('meta');
             meta.name = 'viewport';
             meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
@@ -53,6 +93,7 @@
             window.addEventListener('resize', resizeCanvas);
         }
 
+        // Modified merge pipeline to accurately compute network progress
         function mergeFiles(fileParts) {
             return new Promise((resolve, reject) => {
                 let buffers = [];
@@ -64,10 +105,26 @@
                         resolve(mergedFileUrl);
                         return;
                     }
-                    fetch(fileParts[index]).then((response) => response.arrayBuffer()).then((data) => {
+                    
+                    statusLabel.innerText = "DOWNLOADING PART " + (index + 1) + "/" + fileParts.length + "...";
+                    
+                    fetch(fileParts[index]).then((response) => {
+                        if (!response.ok) throw new Error("Network response code: " + response.status);
+                        return response.arrayBuffer();
+                    }).then((data) => {
                         buffers.push(data);
+                        
+                        // Update UI progress based on file parts downloaded
+                        let partPercentage = Math.round(((index + 1) / fileParts.length) * 100);
+                        progressFull.style.width = partPercentage + "%";
+                        progressText.innerText = partPercentage + "%";
+                        
                         fetchPart(index + 1);
-                    }).catch(reject);
+                    }).catch((err) => {
+                        statusLabel.innerText = "DOWNLOAD CRASHED!";
+                        progressText.innerText = "Error pulling chunks from CDN.";
+                        reject(err);
+                    });
                 }
                 fetchPart(0);
             });
@@ -80,10 +137,14 @@
             }
             return parts;
         }
+
+        // Initialize download chain
         Promise.all([
             mergeFiles(getParts("Build/2facc552a7176a3c4f6184e293ead869.data.unityweb", 1, 3))
         ]).then(([dataUrl]) => {
+            statusLabel.innerText = "COMPILING ENGINE...";
             document.querySelector("#unity-canvas").hidden = false;
+            
             createUnityInstance(document.querySelector("#unity-canvas"), {
                 dataUrl: dataUrl,
                 frameworkUrl: "Build/372c51523da4553ad9ad6740d46ef615.framework.js.unityweb",
@@ -92,11 +153,20 @@
                 companyName: "Hakita",
                 productName: "ULTRAKILL",
                 productVersion: "1.0",
-                // matchWebGLToCanvasSize: false, // Uncomment this to separately control WebGL canvas render size and DOM element size.
-                // devicePixelRatio: 1, // Uncomment this to override low DPI rendering on high DPI displays.
+            }, (progress) => {
+                // Secondary engine compilation progress bar update
+                let compilationProgress = Math.round(progress * 100);
+                progressFull.style.width = compilationProgress + "%";
+                progressText.innerText = compilationProgress + "%";
             }).then((e) => {
-                document.querySelector("#loading-text").remove();
+                document.querySelector("#custom-progress-container").remove();
+            }).catch((err) => {
+                console.error(err);
+                statusLabel.innerText = "ENGINE COMPILATION ERROR!";
+                progressText.innerText = "Check your browser's F12 console.";
             });
+        }).catch((globalError) => {
+            console.error("Asset Loader Error: ", globalError);
         });
     </script>
 </body>
