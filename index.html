@@ -2,7 +2,6 @@
 <html lang="en-us">
 
 <head>
-    <base href="./">
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Unity WebGL Player | ULTRAKILL</title>
@@ -17,15 +16,6 @@
             background-color: #000;
         }
 
-        #unity-container {
-            width: 100%;
-            height: 100%;
-            position: fixed;
-            top: 0;
-            left: 0;
-        }
-
-        /* Progress Bar UI Element Styling */
         #custom-progress-container {
             position: absolute;
             left: 50%;
@@ -56,7 +46,6 @@
 </head>
 
 <body>
-    <!-- Visual indicators replacing the flat text loader -->
     <div id="custom-progress-container">
         <div id="loading-text" style="font-size: 24px; font-weight: bold; letter-spacing: 2px;">LOADING ULTRAKILL...</div>
         <div id="custom-progress-bar-empty">
@@ -66,6 +55,8 @@
     </div>
 
     <canvas id="unity-canvas" tabindex="-1" hidden></canvas>
+    
+    <!-- Explicitly pointing to lowercase folder pathways -->
     <script src="build/9853637125e801e9aae48e78dbbdcfca.loader.js"></script>
     <script>
         var canvas = document.querySelector("#unity-canvas");
@@ -93,80 +84,29 @@
             window.addEventListener('resize', resizeCanvas);
         }
 
-        // Modified merge pipeline to accurately compute network progress
-        function mergeFiles(fileParts) {
-            return new Promise((resolve, reject) => {
-                let buffers = [];
+        // Make the canvas visible immediately for standard engine streaming
+        document.querySelector("#unity-canvas").hidden = false;
 
-                function fetchPart(index) {
-                    if (index >= fileParts.length) {
-                        let mergedBlob = new Blob(buffers);
-                        let mergedFileUrl = URL.createObjectURL(mergedBlob);
-                        resolve(mergedFileUrl);
-                        return;
-                    }
-                    
-                    statusLabel.innerText = "DOWNLOADING PART " + (index + 1) + "/" + fileParts.length + "...";
-                    
-                    fetch(fileParts[index]).then((response) => {
-                        if (!response.ok) throw new Error("Network response code: " + response.status);
-                        return response.arrayBuffer();
-                    }).then((data) => {
-                        buffers.push(data);
-                        
-                        // Update UI progress based on file parts downloaded
-                        let partPercentage = Math.round(((index + 1) / fileParts.length) * 100);
-                        progressFull.style.width = partPercentage + "%";
-                        progressText.innerText = partPercentage + "%";
-                        
-                        fetchPart(index + 1);
-                    }).catch((err) => {
-                        statusLabel.innerText = "DOWNLOAD CRASHED!";
-                        progressText.innerText = "Error pulling chunks from CDN.";
-                        reject(err);
-                    });
-                }
-                fetchPart(0);
-            });
-        }
-
-        function getParts(file, start, end) {
-            let parts = [];
-            for (let i = start; i <= end; i++) {
-                parts.push(file + ".part" + i);
-            }
-            return parts;
-        }
-
-        // Initialize download chain
-        Promise.all([
-            mergeFiles(getParts("Build/2facc552a7176a3c4f6184e293ead869.data.unityweb", 1, 3))
-        ]).then(([dataUrl]) => {
-            statusLabel.innerText = "COMPILING ENGINE...";
-            document.querySelector("#unity-canvas").hidden = false;
-            
-            createUnityInstance(document.querySelector("#unity-canvas"), {
-                dataUrl: dataUrl,
-                frameworkUrl: "Build/372c51523da4553ad9ad6740d46ef615.framework.js.unityweb",
-                codeUrl: "Build/4316a55f7504875581587d5c75896d34.wasm.unityweb",
-                streamingAssetsUrl: "StreamingAssets",
-                companyName: "Hakita",
-                productName: "ULTRAKILL",
-                productVersion: "1.0",
-            }, (progress) => {
-                // Secondary engine compilation progress bar update
-                let compilationProgress = Math.round(progress * 100);
-                progressFull.style.width = compilationProgress + "%";
-                progressText.innerText = compilationProgress + "%";
-            }).then((e) => {
-                document.querySelector("#custom-progress-container").remove();
-            }).catch((err) => {
-                console.error(err);
-                statusLabel.innerText = "ENGINE COMPILATION ERROR!";
-                progressText.innerText = "Check your browser's F12 console.";
-            });
-        }).catch((globalError) => {
-            console.error("Asset Loader Error: ", globalError);
+        // Directly initializes Unity using clean, non-blocked file pathways
+        createUnityInstance(document.querySelector("#unity-canvas"), {
+            dataUrl: "build/2facc552a7176a3c4f6184e293ead869.data.unityweb",
+            frameworkUrl: "build/372c51523da4553ad9ad6740d46ef615.framework.js.unityweb",
+            codeUrl: "build/4316a55f7504875581587d5c75896d34.wasm.unityweb",
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "Hakita",
+            productName: "ULTRAKILL",
+            productVersion: "1.0",
+        }, (progress) => {
+            // Standard tracking loop updates percentage directly during network fetch
+            let compilationProgress = Math.round(progress * 100);
+            progressFull.style.width = compilationProgress + "%";
+            progressText.innerText = compilationProgress + "%";
+        }).then((e) => {
+            document.querySelector("#custom-progress-container").remove();
+        }).catch((err) => {
+            console.error(err);
+            statusLabel.innerText = "ENGINE COMPILATION ERROR!";
+            progressText.innerText = "Check your browser's F12 console.";
         });
     </script>
 </body>
