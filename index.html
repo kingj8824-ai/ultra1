@@ -71,7 +71,27 @@
     </div>
 
     <canvas id="unity-canvas" tabindex="-1" style="width: 100vw; height: 100vh; position: fixed; top: 0; left: 0;" hidden></canvas>
-    
+    <script>
+        var gameCanvas = document.querySelector("#unity-canvas");
+        
+        // Forces Chromebook OS to prioritize the game's movement direction vectors
+        window.addEventListener("keydown", function(e) {
+            if(["Space", "KeyW", "KeyA", "KeyS", "KeyD"].indexOf(e.code) > -1) {
+                if (gameCanvas) {
+                    gameCanvas.focus();
+                }
+            }
+        }, {passive: false});
+
+        // Keeps your mouse cursor fully locked to the game view so turning works right
+        document.addEventListener('click', function () {
+            if (gameCanvas && !document.pointerLockElement) {
+                gameCanvas.requestPointerLock({
+                    unadjustedMovement: true 
+                });
+            }
+        });
+    </script>
     <script>
         var logBox = document.getElementById("onscreen-error-log");
         function showDiagnosticError(message) {
